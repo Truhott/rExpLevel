@@ -1,0 +1,24 @@
+bottle:
+  material: EXPERIENCE_BOTTLE
+  name: "<gray>[<#b3f79c>🧪</#b3f79c>] <white>Пузырек с опытом</white> <gray>({points} xp)</gray>"
+  lore:
+    - ''
+    - " <white>Содержит в себе: <#99ff66>{levels} LVL</white>"
+    - " <gray>Используйте ПКМ, чтобы поглотить</gray>"
+    - ''
+  # Блеск зачарования на предмете.
+  glint: true
+  # CustomModelData для ресурспака. 0 — выключено.
+  custom-model-data: 0
+  # Верхний предел уровней в одной бутылке для pack/give.
+  max-levels: 500
+  # Нужна ли пустая стеклянная бутылка при создании кастомных через pack/auto.
+  require-glass-bottle: true
+  # Как забирать опыт: DRINK — ПКМ, THROW — кидок как обычный пузырёк.
+  redeem: DRINK
+
+experience:
+  # Сколько XP тратится и даётся за один обычный пузырёк опыта.
+  xp-per-bottle: 7
+
+config-version: 1 #не трогать!!!

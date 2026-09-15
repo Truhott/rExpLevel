@@ -1,0 +1,72 @@
+prefix: "<b><gradient:#b3f79c:#b3f79c><shadow:#2D3E27:1>rExpLevel</shadow></gradient></b> <dark_gray>»</dark_gray> "
+
+command:
+  no-permission: "{prefix}<white>Недостаточно прав."
+  player-only: "{prefix}<white>Эта команда <red>доступна</red> только игроку."
+  unknown: "{prefix}<white>Неизвестная подкоманда. Используйте <white>/{command} help</white>."
+  invalid-number: "{prefix}<white>Значение <white>{value}</white> должно быть целым положительным числом."
+  levels-limit: "{prefix}<white>Допустимо от <white>1</white> до <white>{max}</white> уровней."
+  player-not-found: "{prefix}<white>Игрок <white>{player}</white> не <red>найден</red>."
+  not-ready: "{prefix}<white>Плагин ещё загружает данные. Попробуйте через несколько секунд."
+
+  pack:
+    usage: "{prefix}<white>Использование: <white>/{command} pack <bottle|experience> <значение> [количество]</white>"
+    not-enough: "{prefix}<white>Нужно <white>{required}</white> XP, у вас <white>{current}</white> XP."
+    no-glass: "{prefix}<white>В инвентаре <red>нет</red> обычных пустых стеклянных бутылочек."
+    success: "{prefix}<white>Создано <white>{amount}</white> бутылочек по <gradient:#b3f79c:#b3f79c>{levels}</gradient> ур. (<white>{points}</white> XP каждая)."
+    experience-not-enough: "{prefix}<white>Для одной обычной бутылочки требуется минимум <white>{xp} XP</white>."
+    experience-success: "{prefix}<white>Создано <white>{amount}</white> обычных бутылочек, потрачено <white>{spent}</white> XP. Осталось <white>{remaining}</white> XP."
+
+  auto:
+    usage: "{prefix}<white>Использование: <white>/{command} auto <on|off> <bottle|experience></white>"
+    enabled-bottle: "{prefix}<white>Автоконвертация в кастомные бутылочки <green>включена</green>. Порог: <white>{keep}</white> ур., фасовка по <gradient:#b3f79c:#b3f79c>{levels}</gradient> ур."
+    enabled-experience: "{prefix}<white>Автоконвертация в обычные бутылочки <green>включена</green>. Порог: <white>{keep}</white> ур."
+    already-enabled-bottle: "{prefix}<white>Автоконвертация в кастомные бутылочки уже <green>включена</green>."
+    already-enabled-experience: "{prefix}<white>Автоконвертация в обычные бутылочки уже <green>включена</green>."
+    disabled-bottle: "{prefix}<white>Автоконвертация <red>выключена</red>. Выбран режим кастомных бутылочек."
+    disabled-experience: "{prefix}<white>Автоконвертация <red>выключена</red>. Выбран режим обычных бутылочек."
+    already-disabled-bottle: "{prefix}<white>Автоконвертация кастомных бутылочек уже <red>выключена</red>."
+    already-disabled-experience: "{prefix}<white>Автоконвертация обычных бутылочек уже <red>выключена</red>."
+    disabled-no-glass: "{prefix}<white>Автоконвертация <red>выключена</red>: закончились пустые стеклянные бутылочки."
+    no-glass: "{prefix}<white>Чтобы <green>включить</green> автоконвертацию, нужна хотя бы одна пустая стеклянная бутылочка."
+    mode-conflict: "{prefix}<white>Уже <green>включён</green> режим <white>{mode}</white>. Сначала выключите его: <white>/{command} auto off {mode}</white>."
+    mode-mismatch: "{prefix}<white>Сейчас <green>активен</green> режим <white>{mode}</white>. Выключайте его: <white>/{command} auto off {mode}</white>."
+    packed-bottle: "{prefix}<white>Лишний опыт упакован в <white>{amount}</white> кастомных бутылочек."
+    packed-experience: "{prefix}<white>Лишний опыт упакован в <white>{amount}</white> обычных бутылочек."
+
+  give:
+    usage: "{prefix}<white>Использование: <white>/{command} give <игрок> <уровни> [количество]</white>"
+    sender: "{prefix}<white>Игроку <white>{player}</white> выдано <gray>{amount}</gray> бутылочек по <gradient:#b3f79c:#b3f79c>{levels}</gradient> ур."
+    target: "{prefix}<white>Вы получили <white>{amount}</white> бутылочек по <gradient:#b3f79c:#b3f79c>{levels}</gradient> ур."
+
+  reload:
+    usage: "{prefix}<white>Использование: <white>/{command} reload</white>"
+    success: "{prefix}<white>Конфигурация перезагружена."
+    failed: "{prefix}<white>Не <red>удалось</red> перезагрузить конфигурацию. Ошибка записана в консоль."
+
+  update:
+    usage: "{prefix}<white>Использование: <white>/{command} update</white>"
+    latest: "{prefix}<white>У вас актуальная версия: <white>{version}</white>."
+    success: "{prefix}<white>Обновление <white>{version}</white> загружено."
+    restart: "{prefix}<white>Перезапустите сервер, чтобы применить обновление."
+    failed: "{prefix}<white>Не <red>удалось</red> проверить или загрузить обновление. Смотрите консоль."
+
+  drink: "{prefix}<white>Возвращено <white>{points}</white> XP."
+  drink-full: "{prefix}<white>У вас слишком много опыта, бутылочка не поместится."
+
+  help:
+    - "<b><gradient:#b3f79c:#b3f79c><shadow:#2D3E27:1>rExpLevel</shadow></gradient></b> <dark_gray>— <white>опыт в бутылочках"
+    - "<white>/{command} pack bottle <уровни> [количество] <dark_gray>— <white>создать кастомные бутылочки"
+    - "<white>/{command} pack experience <XP|all> <dark_gray>— <white>создать обычные бутылочки"
+    - "<white>/{command} auto <on|off> <bottle|experience> <dark_gray>— <white>автоконвертация"
+    - "<white>/{command} give <игрок> <уровни> [количество] <dark_gray>— <white>выдать бутылочки"
+    - "<white>/{command} reload <dark_gray>— <white>перезагрузить конфигурацию"
+    - "<white>/{command} update <dark_gray>— <white>скачать обновление с GitHub"
+    - "<white>ПКМ возвращает одну бутылочку."
+
+placeholder:
+  auto-on: "on"
+  auto-off: "off"
+
+
+config-version: 1 #не трогать!!!
