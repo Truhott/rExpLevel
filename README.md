@@ -50,7 +50,6 @@
 | `/rexp auto <on\|off> <bottle\|experience>` | ⚙️ Вкл/выкл автоконвертацию |
 | `/rexp give <игрок> <уровни> [N]` | 🎁 Выдать бутылочки *(op)* |
 | `/rexp reload` | ♻️ Перезагрузить конфиги *(op)* |
-| `/rexp update` | ⬆️ Обновление с GitHub *(op)* |
 
 ---
 
