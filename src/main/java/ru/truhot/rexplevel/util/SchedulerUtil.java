@@ -6,6 +6,7 @@ import org.bukkit.Location;
 import org.bukkit.entity.Entity;
 import org.bukkit.plugin.Plugin;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -83,7 +84,7 @@ public final class SchedulerUtil {
         entity.getScheduler().run(plugin, task -> action.run(), null);
     }
 
-    public @NotNull Task runForLater(
+    public @Nullable Task runForLater(
             @NotNull Entity entity,
             @NotNull Runnable action,
             long delayTicks
@@ -102,8 +103,7 @@ public final class SchedulerUtil {
                 delayTicks
         );
         if (scheduled == null) {
-            return () -> {
-            };
+            return null;
         }
         wrapped.bind(scheduled);
         tracked.add(wrapped);

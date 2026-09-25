@@ -2,8 +2,12 @@ package ru.truhot.rexplevel.listener;
 
 import lombok.RequiredArgsConstructor;
 import org.bukkit.Material;
+import org.bukkit.command.CommandSender;
+import org.bukkit.entity.Player;
+import org.bukkit.entity.ThrownExpBottle;
 import org.bukkit.event.Event;
 import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockDispenseEvent;
 import org.bukkit.event.entity.ExpBottleEvent;
@@ -25,9 +29,12 @@ public final class BottleListener implements Listener {
     private final @NotNull BottleManager bottles;
     private final @NotNull ConfigManager config;
 
-    @EventHandler(ignoreCancelled = true)
+    @EventHandler(priority = EventPriority.HIGH)
     public void onUse(@NotNull PlayerInteractEvent event) {
         if (config.bottle().redeem() != RedeemMode.DRINK) {
+            return;
+        }
+        if (event.useItemInHand() == Event.Result.DENY) {
             return;
         }
         EquipmentSlot hand = event.getHand();
@@ -35,37 +42,32 @@ public final class BottleListener implements Listener {
             return;
         }
 
-        ItemStack main = event.getPlayer().getInventory().getItemInMainHand();
-        ItemStack off = event.getPlayer().getInventory().getItemInOffHand();
+        Player player = event.getPlayer();
+        ItemStack main = player.getInventory().getItemInMainHand();
+        ItemStack off = player.getInventory().getItemInOffHand();
         boolean mainBottle = bottles.isBottle(main);
         boolean offBottle = bottles.isBottle(off);
-
         if (!mainBottle && !offBottle) {
             return;
         }
-
         if (hand == EquipmentSlot.OFF_HAND && mainBottle) {
             return;
         }
 
-        // Main hand throws vanilla bottle while off-hand holds custom: drink off once on MAIN event.
-        if (!mainBottle && offBottle && main.getType() == Material.EXPERIENCE_BOTTLE) {
+        if (!mainBottle && main.getType() == Material.EXPERIENCE_BOTTLE) {
             if (hand == EquipmentSlot.OFF_HAND) {
                 return;
             }
-            event.setUseItemInHand(Event.Result.DENY);
-            event.setCancelled(true);
-            drink(event, EquipmentSlot.OFF_HAND);
+            deny(event);
+            drink(player, EquipmentSlot.OFF_HAND);
             return;
         }
 
         if (!bottles.isBottle(event.getItem())) {
             return;
         }
-
-        event.setUseItemInHand(Event.Result.DENY);
-        event.setCancelled(true);
-        drink(event, hand);
+        deny(event);
+        drink(player, hand);
     }
 
     @EventHandler(ignoreCancelled = true)
@@ -80,8 +82,7 @@ public final class BottleListener implements Listener {
 
     @EventHandler(ignoreCancelled = true)
     public void onLaunch(@NotNull ProjectileLaunchEvent event) {
-        if (!(event.getEntity() instanceof org.bukkit.entity.ThrownExpBottle bottle)
-                || !bottles.isBottle(bottle.getItem())) {
+        if (!(event.getEntity() instanceof ThrownExpBottle bottle) || !bottles.isBottle(bottle.getItem())) {
             return;
         }
         if (config.bottle().redeem() != RedeemMode.THROW) {
@@ -91,34 +92,31 @@ public final class BottleListener implements Listener {
 
     @EventHandler(ignoreCancelled = true)
     public void onBreak(@NotNull ExpBottleEvent event) {
-        ItemStack item = event.getEntity().getItem();
-        int points = bottles.points(item);
+        int points = bottles.points(event.getEntity().getItem());
         if (points <= 0) {
             return;
         }
         event.setExperience(points);
     }
 
-    private void drink(@NotNull PlayerInteractEvent event, @NotNull EquipmentSlot hand) {
-        int points = bottles.drink(event.getPlayer(), hand);
+    private void deny(@NotNull PlayerInteractEvent event) {
+        event.setUseItemInHand(Event.Result.DENY);
+        event.setUseInteractedBlock(Event.Result.DENY);
+    }
+
+    private void drink(@NotNull Player player, @NotNull EquipmentSlot hand) {
+        int points = bottles.drink(player, hand);
         if (points < 0) {
-            send(event.getPlayer(), "drink-full");
+            send(player, "drink-full", Map.of());
             return;
         }
         if (points > 0) {
-            send(event.getPlayer(), "drink", Map.of("points", points));
+            send(player, "drink", Map.of("points", points));
         }
     }
 
     private void send(
-            @NotNull org.bukkit.command.CommandSender sender,
-            @NotNull String key
-    ) {
-        send(sender, key, Map.of());
-    }
-
-    private void send(
-            @NotNull org.bukkit.command.CommandSender sender,
+            @NotNull CommandSender sender,
             @NotNull String key,
             @NotNull Map<String, ?> placeholders
     ) {

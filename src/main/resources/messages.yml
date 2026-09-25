@@ -44,13 +44,6 @@ command:
     success: "{prefix}<white>Конфигурация перезагружена."
     failed: "{prefix}<white>Не <red>удалось</red> перезагрузить конфигурацию. Ошибка записана в консоль."
 
-  update:
-    usage: "{prefix}<white>Использование: <white>/{command} update</white>"
-    latest: "{prefix}<white>У вас актуальная версия: <white>{version}</white>."
-    success: "{prefix}<white>Обновление <white>{version}</white> загружено."
-    restart: "{prefix}<white>Перезапустите сервер, чтобы применить обновление."
-    failed: "{prefix}<white>Не <red>удалось</red> проверить или загрузить обновление. Смотрите консоль."
-
   drink: "{prefix}<white>Возвращено <white>{points}</white> XP."
   drink-full: "{prefix}<white>У вас слишком много опыта, бутылочка не поместится."
 
@@ -61,12 +54,11 @@ command:
     - "<white>/{command} auto <on|off> <bottle|experience> <dark_gray>— <white>автоконвертация"
     - "<white>/{command} give <игрок> <уровни> [количество] <dark_gray>— <white>выдать бутылочки"
     - "<white>/{command} reload <dark_gray>— <white>перезагрузить конфигурацию"
-    - "<white>/{command} update <dark_gray>— <white>скачать обновление с GitHub"
-    - "<white>ПКМ возвращает одну бутылочку."
 
 placeholder:
   auto-on: "on"
   auto-off: "off"
+  mode-bottle: "bottle"
+  mode-experience: "experience"
 
-
-config-version: 1 #не трогать!!!
+config-version: 2 #не трогать!!!

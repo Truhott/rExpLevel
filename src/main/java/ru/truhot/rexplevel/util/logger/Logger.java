@@ -14,8 +14,8 @@ public class Logger {
     private final String ERROR_PREFIX = "<dark_red>ERROR <red>";
     private final String DEBUG_PREFIX = "<aqua>DEBUG <white>";
 
-    private @Nullable ILogger logger;
-    private boolean debugEnabled;
+    private volatile @Nullable ILogger logger;
+    private volatile boolean debugEnabled;
 
     public void setup(@NotNull JavaPlugin plugin) {
         logger = new LegacyLogger(plugin.getComponentLogger());

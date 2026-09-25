@@ -17,9 +17,6 @@ repositories {
 
 dependencies {
     compileOnly("io.papermc.paper:paper-api:1.21.4-R0.1-SNAPSHOT")
-    compileOnly("com.zaxxer:HikariCP:7.1.0")
-    compileOnly("com.j256.ormlite:ormlite-jdbc:6.1")
-    compileOnly("org.xerial:sqlite-jdbc:3.53.2.1")
     compileOnly("me.clip:placeholderapi:2.11.6")
 }
 
@@ -39,6 +36,7 @@ tasks {
         filteringCharset = "UTF-8"
 
         val props = mapOf("version" to version)
+        inputs.properties(props)
         filesMatching("plugin.yml") {
             expand(props)
         }

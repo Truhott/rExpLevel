@@ -38,18 +38,13 @@ public final class ConfigManager {
             "config.yml", 1,
             "bottle.yml", 1,
             "auto.yml", 1,
-            "messages.yml", 1
+            "messages.yml", 2
     );
     private static final Set<String> IGNORED_ROOTS = Set.of();
 
     private final @NotNull JavaPlugin plugin;
 
-    private volatile @NotNull YamlConfiguration config = new YamlConfiguration();
-    private volatile @NotNull YamlConfiguration messages = new YamlConfiguration();
-    private volatile @NotNull BottleSettings bottleSettings = defaultsBottle();
-    private volatile int xpPerExperienceBottle = 7;
-    private volatile @NotNull AutoSettings autoSettings = defaultsAuto();
-    private volatile @NotNull CommandSettings commandSettings = defaultsCommands();
+    private volatile @NotNull Snapshot snapshot = Snapshot.defaults();
     private volatile @NotNull CommandSettings registeredCommands = defaultsCommands();
 
     public void loadForStartup() throws IOException, InvalidConfigurationException {
@@ -57,8 +52,15 @@ public final class ConfigManager {
         saveResource("config.yml");
         YamlConfiguration loadedConfig = load("config.yml");
         CommandSettings loadedCommands = readCommands(loadedConfig);
-        config = loadedConfig;
-        commandSettings = loadedCommands;
+        Snapshot current = snapshot;
+        snapshot = new Snapshot(
+                loadedConfig,
+                current.messages(),
+                current.bottle(),
+                current.xpPerExperienceBottle(),
+                current.auto(),
+                loadedCommands
+        );
         registeredCommands = loadedCommands;
     }
 
@@ -84,12 +86,14 @@ public final class ConfigManager {
         AutoSettings loadedAuto = readAuto(loadedAutoConfig);
         CommandSettings loadedCommands = readCommands(loadedConfig);
 
-        config = loadedConfig;
-        messages = loadedMessages;
-        bottleSettings = loadedBottle;
-        xpPerExperienceBottle = loadedXpPerExperience;
-        autoSettings = loadedAuto;
-        commandSettings = loadedCommands;
+        snapshot = new Snapshot(
+                loadedConfig,
+                loadedMessages,
+                loadedBottle,
+                loadedXpPerExperience,
+                loadedAuto,
+                loadedCommands
+        );
         if (!loadedCommands.equals(registeredCommands)) {
             Logger.warn("Имена команд изменены. Перезапустите сервер, чтобы применить "
                     + loadedCommands.main() + " / " + loadedCommands.aliases());
@@ -97,6 +101,7 @@ public final class ConfigManager {
     }
 
     public boolean isDebug() {
+        YamlConfiguration config = snapshot.config();
         if (config.contains("settings.debug")) {
             return config.getBoolean("settings.debug");
         }
@@ -104,31 +109,32 @@ public final class ConfigManager {
     }
 
     public boolean isMetrics() {
-        return config.getBoolean("settings.metrics", true);
+        return snapshot.config().getBoolean("settings.metrics", true);
     }
 
     public @NotNull BottleSettings bottle() {
-        return bottleSettings;
+        return snapshot.bottle();
     }
 
     public int xpPerExperienceBottle() {
-        return xpPerExperienceBottle;
+        return snapshot.xpPerExperienceBottle();
     }
 
     public @NotNull AutoSettings auto() {
-        return autoSettings;
+        return snapshot.auto();
     }
 
     public @NotNull CommandSettings commands() {
-        return commandSettings;
+        return snapshot.commands();
     }
 
     public @NotNull String placeholder(@NotNull String key) {
-        return messages.getString("placeholder." + key, "");
+        return snapshot.messages().getString("placeholder." + key, "");
     }
 
     public @NotNull String getCommandMessage(@NotNull String key) {
-        return withPrefix(messages.getString("command." + key, ""));
+        Snapshot current = snapshot;
+        return withPrefix(current, current.messages().getString("command." + key, ""));
     }
 
     public @NotNull String formatCommandMessage(
@@ -139,8 +145,9 @@ public final class ConfigManager {
     }
 
     public @NotNull List<String> getCommandMessages(@NotNull String key) {
-        return messages.getStringList("command." + key).stream()
-                .map(this::withPrefix)
+        Snapshot current = snapshot;
+        return current.messages().getStringList("command." + key).stream()
+                .map(line -> withPrefix(current, line))
                 .toList();
     }
 
@@ -251,10 +258,10 @@ public final class ConfigManager {
         }
     }
 
-    private @NotNull String withPrefix(@NotNull String text) {
+    private @NotNull String withPrefix(@NotNull Snapshot current, @NotNull String text) {
         return text
-                .replace("{prefix}", messages.getString("prefix", ""))
-                .replace("{command}", commandSettings.main());
+                .replace("{prefix}", current.messages().getString("prefix", ""))
+                .replace("{command}", current.commands().main());
     }
 
     private @NotNull CommandSettings readCommands(@NotNull YamlConfiguration yaml) {
@@ -411,5 +418,26 @@ public final class ConfigManager {
                 true,
                 RedeemMode.DRINK
         );
+    }
+
+    private record Snapshot(
+            @NotNull YamlConfiguration config,
+            @NotNull YamlConfiguration messages,
+            @NotNull BottleSettings bottle,
+            int xpPerExperienceBottle,
+            @NotNull AutoSettings auto,
+            @NotNull CommandSettings commands
+    ) {
+
+        private static @NotNull Snapshot defaults() {
+            return new Snapshot(
+                    new YamlConfiguration(),
+                    new YamlConfiguration(),
+                    defaultsBottle(),
+                    7,
+                    defaultsAuto(),
+                    defaultsCommands()
+            );
+        }
     }
 }

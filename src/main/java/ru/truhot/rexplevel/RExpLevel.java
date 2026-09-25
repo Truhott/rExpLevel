@@ -2,7 +2,6 @@ package ru.truhot.rexplevel;
 
 import io.papermc.paper.plugin.lifecycle.event.types.LifecycleEvents;
 import org.bukkit.NamespacedKey;
-import org.bukkit.entity.Player;
 import org.bukkit.permissions.Permission;
 import org.bukkit.permissions.PermissionDefault;
 import org.bukkit.plugin.PluginManager;
@@ -15,39 +14,44 @@ import ru.truhot.rexplevel.command.sub.GiveSubCommand;
 import ru.truhot.rexplevel.command.sub.HelpSubCommand;
 import ru.truhot.rexplevel.command.sub.PackSubCommand;
 import ru.truhot.rexplevel.command.sub.ReloadSubCommand;
-import ru.truhot.rexplevel.command.sub.UpdateSubCommand;
-import ru.truhot.rexplevel.database.DatabaseManager;
-import ru.truhot.rexplevel.database.repository.PlayerSettingsRepository;
 import ru.truhot.rexplevel.listener.BottleListener;
 import ru.truhot.rexplevel.listener.ExperienceListener;
-import ru.truhot.rexplevel.listener.PlayerDataListener;
 import ru.truhot.rexplevel.manager.AutoConvertManager;
 import ru.truhot.rexplevel.manager.BottleManager;
 import ru.truhot.rexplevel.manager.ConfigManager;
 import ru.truhot.rexplevel.manager.ExperienceBottleManager;
+import ru.truhot.rexplevel.manager.PlayerSettingsManager;
 import ru.truhot.rexplevel.placeholder.PlaceholderHook;
 import ru.truhot.rexplevel.util.Metrics;
 import ru.truhot.rexplevel.util.SchedulerUtil;
-import ru.truhot.rexplevel.util.UpdateUtil;
 import ru.truhot.rexplevel.util.logger.Logger;
 
 import java.util.List;
 
 public final class RExpLevel extends JavaPlugin {
 
+    private static final int BSTATS_ID = 34005;
+    private static final List<String> PERMISSIONS = List.of(
+            "rexp.use",
+            "rexp.pack",
+            "rexp.auto",
+            "rexp.give",
+            "rexp.reload"
+    );
+
     private volatile boolean shuttingDown;
-    private @Nullable SchedulerUtil scheduler;
-    private @Nullable DatabaseManager database;
-    private @Nullable PlayerSettingsRepository repository;
-    private @Nullable ExperienceListener experienceListener;
-    private @Nullable AutoConvertManager autoConvert;
-    private @Nullable Metrics metrics;
+    private volatile @Nullable SchedulerUtil scheduler;
+    private volatile @Nullable PlayerSettingsManager playerSettings;
+    private volatile @Nullable ExperienceListener experienceListener;
+    private volatile @Nullable AutoConvertManager autoConvert;
+    private volatile @Nullable Metrics metrics;
     private final @NotNull PlaceholderHook placeholders = new PlaceholderHook();
 
     @Override
     public void onEnable() {
         Logger.setup(this);
         SchedulerUtil schedulerUtil = new SchedulerUtil(this);
+        scheduler = schedulerUtil;
         ConfigManager config = new ConfigManager(this);
         try {
             config.loadForStartup();
@@ -55,92 +59,69 @@ public final class RExpLevel extends JavaPlugin {
             Logger.error("Не удалось загрузить команды из config.yml", exception);
         }
         if (config.isMetrics()) {
-            int pluginId = 34005;
-            metrics = new Metrics(this, pluginId);
+            metrics = new Metrics(this, BSTATS_ID);
             Logger.info("bStats успешно инициализирован!");
         }
         ExpCommand command = new ExpCommand(config);
-        scheduler = schedulerUtil;
+        PlayerSettingsManager settings = new PlayerSettingsManager(this, schedulerUtil);
+        playerSettings = settings;
         registerPermissions();
         registerCommands(command, config);
-        schedulerUtil.runAsync(() -> initialize(config, command, schedulerUtil));
+        schedulerUtil.runAsync(() -> initialize(config, command, settings, schedulerUtil));
     }
 
     @Override
     public void onDisable() {
         shuttingDown = true;
         placeholders.unregister();
-        if (metrics != null) {
-            metrics.shutdown();
+        Metrics currentMetrics = metrics;
+        if (currentMetrics != null) {
+            currentMetrics.shutdown();
         }
-        if (experienceListener != null) {
-            experienceListener.stop();
+        ExperienceListener listener = experienceListener;
+        if (listener != null) {
+            listener.stop();
         }
-        if (autoConvert != null) {
-            autoConvert.stop();
+        AutoConvertManager convertManager = autoConvert;
+        if (convertManager != null) {
+            convertManager.stop();
         }
-        if (repository != null) {
-            repository.flush();
+        SchedulerUtil currentScheduler = scheduler;
+        if (currentScheduler != null) {
+            currentScheduler.cancelAll();
         }
-        if (scheduler != null) {
-            scheduler.cancelAll();
+        PlayerSettingsManager settings = playerSettings;
+        if (settings != null) {
+            settings.shutdown();
         }
-        if (database != null) {
-            database.close();
-        }
+        unregisterPermissions();
     }
 
     private void initialize(
             @NotNull ConfigManager config,
             @NotNull ExpCommand command,
+            @NotNull PlayerSettingsManager settings,
             @NotNull SchedulerUtil schedulerUtil
     ) {
-        DatabaseManager databaseManager = new DatabaseManager(this);
         try {
             config.reload();
             Logger.setDebugEnabled(config.isDebug());
-            if (!databaseManager.connect()) {
-                disable(schedulerUtil);
-                return;
-            }
-
-            var settingsDao = databaseManager.playerSettingsDao();
-            var bottleModeDao = databaseManager.playerBottleModeDao();
-            if (settingsDao == null || bottleModeDao == null) {
-                databaseManager.close();
-                disable(schedulerUtil);
-                return;
-            }
-
-            PlayerSettingsRepository settingsRepository = new PlayerSettingsRepository(
-                    settingsDao,
-                    bottleModeDao,
-                    schedulerUtil
-            );
-            if (shuttingDown) {
-                databaseManager.close();
-                return;
-            }
-
-            database = databaseManager;
-            repository = settingsRepository;
-            schedulerUtil.runGlobal(() -> registerRuntime(
-                    config,
-                    command,
-                    settingsRepository,
-                    schedulerUtil
-            ));
+            settings.load();
         } catch (Exception exception) {
-            databaseManager.close();
             Logger.error("Не удалось запустить rExpLevel", exception);
             disable(schedulerUtil);
+            return;
         }
+        if (shuttingDown) {
+            return;
+        }
+        schedulerUtil.runGlobal(() -> registerRuntime(config, command, settings, schedulerUtil));
     }
 
     private void registerRuntime(
             @NotNull ConfigManager config,
             @NotNull ExpCommand command,
-            @NotNull PlayerSettingsRepository settingsRepository,
+            @NotNull PlayerSettingsManager settings,
             @NotNull SchedulerUtil schedulerUtil
     ) {
         if (shuttingDown) {
@@ -154,7 +135,7 @@ public final class RExpLevel extends JavaPlugin {
         );
         ExperienceBottleManager experienceBottles = new ExperienceBottleManager(config);
         AutoConvertManager convertManager = new AutoConvertManager(
-                settingsRepository,
+                settings,
                 config,
                 bottles,
                 experienceBottles
@@ -164,7 +145,6 @@ public final class RExpLevel extends JavaPlugin {
                 config,
                 schedulerUtil
         );
-        UpdateUtil updates = new UpdateUtil(this, schedulerUtil, config);
 
         autoConvert = convertManager;
         experienceListener = experience;
@@ -174,23 +154,16 @@ public final class RExpLevel extends JavaPlugin {
                 new AutoSubCommand(convertManager, config, schedulerUtil),
                 new GiveSubCommand(this, bottles, config, schedulerUtil),
                 new ReloadSubCommand(config, schedulerUtil, experience),
-                new UpdateSubCommand(updates, config),
                 new HelpSubCommand(config)
         ));
 
         PluginManager plugins = getServer().getPluginManager();
         plugins.registerEvents(new BottleListener(bottles, config), this);
         plugins.registerEvents(experience, this);
-        plugins.registerEvents(new PlayerDataListener(settingsRepository), this);
 
         experience.start();
-
-        for (Player player : getServer().getOnlinePlayers()) {
-            settingsRepository.loadPlayer(player.getUniqueId());
-        }
         placeholders.register(this, convertManager, config);
         Logger.info("rExpLevel включён");
-        updates.check();
     }
 
     @SuppressWarnings("UnstableApiUsage")
@@ -206,21 +179,21 @@ public final class RExpLevel extends JavaPlugin {
 
     private void registerPermissions() {
         PluginManager plugins = getServer().getPluginManager();
-        registerPermission(plugins, "rexp.use", PermissionDefault.TRUE);
-        registerPermission(plugins, "rexp.pack", PermissionDefault.TRUE);
-        registerPermission(plugins, "rexp.auto", PermissionDefault.TRUE);
-        registerPermission(plugins, "rexp.give", PermissionDefault.OP);
-        registerPermission(plugins, "rexp.reload", PermissionDefault.OP);
-        registerPermission(plugins, "rexp.update", PermissionDefault.OP);
+        for (String name : PERMISSIONS) {
+            if (plugins.getPermission(name) != null) {
+                continue;
+            }
+            PermissionDefault defaultValue = name.equals("rexp.give") || name.equals("rexp.reload")
+                    ? PermissionDefault.OP
+                    : PermissionDefault.TRUE;
+            plugins.addPermission(new Permission(name, defaultValue));
+        }
     }
 
-    private void registerPermission(
-            @NotNull PluginManager plugins,
-            @NotNull String name,
-            @NotNull PermissionDefault defaultValue
-    ) {
-        if (plugins.getPermission(name) == null) {
-            plugins.addPermission(new Permission(name, defaultValue));
+    private void unregisterPermissions() {
+        PluginManager plugins = getServer().getPluginManager();
+        for (String name : PERMISSIONS) {
+            plugins.removePermission(name);
         }
     }
 

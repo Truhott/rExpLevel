@@ -1,5 +1,6 @@
 package ru.truhot.rexplevel.placeholder;
 
+import lombok.RequiredArgsConstructor;
 import me.clip.placeholderapi.expansion.PlaceholderExpansion;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.entity.Player;
@@ -10,21 +11,12 @@ import ru.truhot.rexplevel.manager.ConfigManager;
 
 import java.util.Locale;
 
+@RequiredArgsConstructor
 public final class RExpExpansion extends PlaceholderExpansion {
 
     private final @NotNull String version;
     private final @NotNull AutoConvertManager autoConvert;
     private final @NotNull ConfigManager config;
-
-    public RExpExpansion(
-            @NotNull String version,
-            @NotNull AutoConvertManager autoConvert,
-            @NotNull ConfigManager config
-    ) {
-        this.version = version;
-        this.autoConvert = autoConvert;
-        this.config = config;
-    }
 
     @Override
     public @NotNull String getIdentifier() {
@@ -64,7 +56,7 @@ public final class RExpExpansion extends PlaceholderExpansion {
             case "auto" -> autoConvert.isEnabled(player)
                     ? config.placeholder("auto-on")
                     : config.placeholder("auto-off");
-            case "mode" -> autoConvert.getMode(player).name().toLowerCase(Locale.ROOT);
+            case "mode" -> config.placeholder("mode-" + autoConvert.getMode(player).name().toLowerCase(Locale.ROOT));
             default -> null;
         };
     }

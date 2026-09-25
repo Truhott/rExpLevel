@@ -201,8 +201,6 @@ public final class Metrics {
                 checkRelocation();
             }
             if (enabled) {
-                // WARNING: Removing the option to opt-out will get your plugin banned from
-                // bStats
                 startSubmitting();
             }
         }
@@ -228,10 +226,6 @@ public final class Metrics {
                             this.submitData();
                         }
                     };
-            // WARNING: You must not modify and part of this Metrics class, including the
-            // submit delay or frequency!
-            // WARNING: Modifying this code will get your plugin banned on bStats. Just
-            // don't do it!
             long initialDelay = (long) (1000 * 60 * (3 + Math.random() * 3));
             long secondDelay = (long) (1000 * 60 * (Math.random() * 30));
             scheduler.schedule(submitTask, initialDelay, TimeUnit.MILLISECONDS);

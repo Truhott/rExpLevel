@@ -21,6 +21,8 @@ import ru.truhot.rexplevel.util.SchedulerUtil.Task;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 @RequiredArgsConstructor
 public final class ExperienceListener implements Listener {
@@ -83,12 +85,15 @@ public final class ExperienceListener implements Listener {
 
     private void queue(@NotNull Player player) {
         UUID playerUuid = player.getUniqueId();
-        if (pending.containsKey(playerUuid)) {
+        PendingTask handle = new PendingTask();
+        if (pending.putIfAbsent(playerUuid, handle) != null) {
             return;
         }
-        Task[] holder = new Task[1];
-        holder[0] = scheduler.runForLater(player, () -> {
-            pending.remove(playerUuid, holder[0]);
+        Task scheduled = scheduler.runForLater(player, () -> {
+            pending.remove(playerUuid, handle);
+            if (handle.isCancelled()) {
+                return;
+            }
             ConvertResult result = autoConvert.convert(player);
             if (result.disabledNoGlass()) {
                 player.sendMessage(MessageUtil.parseText(
@@ -110,9 +115,11 @@ public final class ExperienceListener implements Listener {
                 queue(player);
             }
         }, 1L);
-        if (pending.putIfAbsent(playerUuid, holder[0]) != null) {
-            holder[0].cancel();
+        if (scheduled == null) {
+            pending.remove(playerUuid, handle);
+            return;
         }
+        handle.bind(scheduled);
     }
 
     private void cancel(@NotNull UUID playerUuid) {
@@ -134,6 +141,32 @@ public final class ExperienceListener implements Listener {
         periodicTask = null;
         if (task != null) {
             task.cancel();
+        }
+    }
+
+    private static final class PendingTask implements Task {
+
+        private final @NotNull AtomicBoolean cancelled = new AtomicBoolean();
+        private final @NotNull AtomicReference<Task> scheduled = new AtomicReference<>();
+
+        private void bind(@NotNull Task task) {
+            scheduled.set(task);
+            if (cancelled.get()) {
+                task.cancel();
+            }
+        }
+
+        private boolean isCancelled() {
+            return cancelled.get();
+        }
+
+        @Override
+        public void cancel() {
+            cancelled.set(true);
+            Task task = scheduled.getAndSet(null);
+            if (task != null) {
+                task.cancel();
+            }
         }
     }
 }

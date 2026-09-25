@@ -3,7 +3,6 @@ package ru.truhot.rexplevel.manager;
 import lombok.RequiredArgsConstructor;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
-import ru.truhot.rexplevel.database.repository.PlayerSettingsRepository;
 import ru.truhot.rexplevel.model.AutoSettings.ConfigureStatus;
 import ru.truhot.rexplevel.model.AutoSettings.ConvertResult;
 import ru.truhot.rexplevel.model.AutoSettings.ModeSettings;
@@ -18,22 +17,22 @@ import java.util.concurrent.ConcurrentHashMap;
 @RequiredArgsConstructor
 public final class AutoConvertManager {
 
-    private final @NotNull PlayerSettingsRepository repository;
+    private final @NotNull PlayerSettingsManager playerSettings;
     private final @NotNull ConfigManager config;
     private final @NotNull BottleManager bottles;
     private final @NotNull ExperienceBottleManager experienceBottles;
     private final @NotNull Set<UUID> converting = ConcurrentHashMap.newKeySet();
 
     public boolean isEnabled(@NotNull Player player) {
-        return repository.isAutoEnabled(player.getUniqueId(), config.auto().enabledByDefault());
+        return playerSettings.isAutoEnabled(player.getUniqueId(), config.auto().enabledByDefault());
     }
 
     public boolean isLoaded(@NotNull Player player) {
-        return repository.isLoaded(player.getUniqueId());
+        return playerSettings.isReady();
     }
 
     public @NotNull BottleMode getMode(@NotNull Player player) {
-        return repository.getBottleMode(player.getUniqueId(), config.auto().defaultMode());
+        return playerSettings.getBottleMode(player.getUniqueId(), config.auto().defaultMode());
     }
 
     public @NotNull ConfigureStatus configure(
@@ -42,7 +41,7 @@ public final class AutoConvertManager {
             @NotNull BottleMode mode
     ) {
         UUID playerUuid = player.getUniqueId();
-        if (!repository.isLoaded(playerUuid)) {
+        if (!playerSettings.isReady()) {
             return ConfigureStatus.NOT_READY;
         }
         boolean currentlyEnabled = isEnabled(player);
@@ -59,8 +58,8 @@ public final class AutoConvertManager {
             if (modeSettings.requireGlassBottle() && ExperienceUtil.Glass.count(player) <= 0) {
                 return ConfigureStatus.NO_GLASS;
             }
-            repository.setBottleMode(playerUuid, mode);
-            repository.setAutoEnabled(playerUuid, true);
+            playerSettings.setBottleMode(playerUuid, mode);
+            playerSettings.setAutoEnabled(playerUuid, true);
             return ConfigureStatus.ENABLED;
         }
 
@@ -70,8 +69,8 @@ public final class AutoConvertManager {
         if (currentMode != mode) {
             return ConfigureStatus.MODE_MISMATCH;
         }
-        repository.setBottleMode(playerUuid, mode);
-        repository.setAutoEnabled(playerUuid, false);
+        playerSettings.setBottleMode(playerUuid, mode);
+        playerSettings.setAutoEnabled(playerUuid, false);
         return ConfigureStatus.DISABLED;
     }
 
@@ -81,7 +80,7 @@ public final class AutoConvertManager {
 
     public @NotNull ConvertResult convert(@NotNull Player player) {
         BottleMode mode = getMode(player);
-        if (!repository.isLoaded(player.getUniqueId())
+        if (!playerSettings.isReady()
                 || !isEnabled(player)
                 || !player.hasPermission("rexp.auto")) {
             return new ConvertResult(0, mode, false);
@@ -89,7 +88,7 @@ public final class AutoConvertManager {
 
         ModeSettings settings = config.auto().mode(mode);
         if (settings.requireGlassBottle() && ExperienceUtil.Glass.count(player) <= 0) {
-            repository.setAutoEnabled(player.getUniqueId(), false);
+            playerSettings.setAutoEnabled(player.getUniqueId(), false);
             return new ConvertResult(0, mode, true);
         }
 
@@ -108,7 +107,7 @@ public final class AutoConvertManager {
             if (amount == 0
                     && settings.requireGlassBottle()
                     && ExperienceUtil.Glass.count(player) <= 0) {
-                repository.setAutoEnabled(playerUuid, false);
+                playerSettings.setAutoEnabled(playerUuid, false);
                 return new ConvertResult(0, mode, true);
             }
             applyHunger(player, amount, settings.hungerPerBottle());
@@ -119,7 +118,7 @@ public final class AutoConvertManager {
     }
 
     public boolean hasConvertibleSurplus(@NotNull Player player) {
-        if (!repository.isLoaded(player.getUniqueId())
+        if (!playerSettings.isReady()
                 || !isEnabled(player)
                 || !player.hasPermission("rexp.auto")
                 || isConverting(player.getUniqueId())) {
